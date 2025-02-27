@@ -6,6 +6,9 @@ from datetime import datetime
 # 解析 ASC 格式 Log
 def parse_can_log(file_path, target_ids, error_values):
     try:
+        # 将目标 ID 列表和报错数值列表转换为集合，提高查找效率
+        target_ids = set(target_ids)
+        error_values = set(error_values)
         error_data = []
         with open(file_path, 'r') as f:
             for line in f:
@@ -15,27 +18,17 @@ def parse_can_log(file_path, target_ids, error_values):
                         timestamp, _, frame_id, payload = parts[:4]
                         if frame_id in target_ids:
                             if payload in error_values:
-                                error_data.append([float(timestamp), frame_id, payload])
-
-        # 创建包含报错信息的 DataFrame
-        error_df = pd.DataFrame(error_data, columns=['Timestamp', 'ID', 'Data'])
-
-        # 获取当前时间作为解析时间
-        parsing_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        # 在 DataFrame 中添加解析时间列
-        error_df['Parsing Time'] = parsing_time
-
-        # 调整列顺序
-        error_df = error_df[['Parsing Time', 'Timestamp', 'ID', 'Data']]
-
-        # 将报错信息保存到 Excel 文件
-        error_df.to_excel('error_report.xlsx', index=False)
-        print("CAN Log 文件解析完成，报错数据已保存到 error_report.xlsx。")
+                                try:
+                                    # 尝试将时间戳转换为浮点数
+                                    timestamp_float = float(timestamp)
+                                    error_data.append([timestamp_float, frame_id, payload])
+                                except ValueError:
+                                    print(f"无法将时间戳 {timestamp} 转换为浮点数，跳过该行。")
     except FileNotFoundError:
         print(f"错误：未找到文件 {file_path}。")
     except Exception as e:
         print(f"发生未知错误：{e}。")
+    return error_data
 
 # 调用函数进行解析
 # 指定需要解析的 ID
